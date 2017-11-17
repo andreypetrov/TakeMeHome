@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.util.Log;
 import android.view.View;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -15,11 +16,24 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
+import com.petrovdevelopment.takemehome.model.GitHubRepo;
+import com.petrovdevelopment.takemehome.network.GitHubClient;
+import com.petrovdevelopment.takemehome.network.NetworkManager;
+
+import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
     TextView mainTextView;
     boolean mainTextToggle = false;
+    int nextRepo = 0;
+
+    List<GitHubRepo> gitHubRepoList = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,18 +42,46 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         mainTextView = (TextView) findViewById(R.id.main_text);
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        final FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab.setEnabled(false);
+
+
+
+
+
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                Snackbar.make(view, "Loading...", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
 //                openMaps();
 
-                if (mainTextToggle) mainTextView.setText("Hello TEST");
-                else mainTextView.setText("Hello BEST");
+//                if (mainTextToggle) mainTextView.setText("Hello TEST");
+//                else mainTextView.setText("Hello BEST");
+//
+//                mainTextToggle = !mainTextToggle;
+                GitHubClient gitHubClient = NetworkManager.getInstance().getGitHubClient();
+                Call<List<GitHubRepo>> call = gitHubClient.listRepos("andreypetrov");
+                call.enqueue(new Callback<List<GitHubRepo>>() {
+                    @Override
+                    public void onResponse(Call<List<GitHubRepo>> call, Response<List<GitHubRepo>> response) {
+                        gitHubRepoList = response.body();
+                        Log.i(this.getClass().getSimpleName(), "gitHubRepoList:" + gitHubRepoList);
+                        fab.setEnabled(true);
+                        if (gitHubRepoList != null) {
+                            int current = nextRepo%gitHubRepoList.size();;
+                            mainTextView.setText(gitHubRepoList.get(current).getName());
+                            nextRepo++;
+                        }
+                    }
 
-                mainTextToggle = !mainTextToggle;
+                    @Override
+                    public void onFailure(Call<List<GitHubRepo>> call, Throwable t) {
+                        mainTextView.setText(t.getMessage());
+                    }
+                });
+
+
             }
         });
 
